@@ -3,6 +3,8 @@ package token
 import (
 	"crypto/rsa"
 	"encoding/base64"
+	"github.com/google/uuid"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/middleware/jwt"
 	"log"
@@ -33,12 +35,17 @@ const (
 )
 
 type (
-	DefaultUser struct {
-		Id     uint64 `json:"id"`
-		Mail   string `json:"email"`
-		OpenId string `json:"openId"`
+	DefaultAuth struct {
+		id             uint64    `json:"Id"`
+		salt           string    `json:"Salt"`
+		environment    string    `json:"Environment"`
+		isRefresh      bool      `json:"IsRefresh"`
+		email          string    `json:"Email"`
+		privyWallet    string    `json:"PrivyWallet"`
+		changePassword bool      `json:"ChangePassword"`
+		openId         uuid.UUID `json:"OpenId"`
 	}
-	UFn           func(u *DefaultUser)
+	UFn           func(u *DefaultAuth)
 	DefaultEngine struct {
 		private                     *rsa.PrivateKey
 		public                      *rsa.PublicKey
@@ -97,36 +104,126 @@ func (d *DefaultEngine) RefreshMaxAge() time.Duration {
 	return d.refreshMaxAge
 }
 
-func WithUserID(ID uint64) UFn {
-	return func(u *DefaultUser) {
-		u.Id = ID
+func (a *DefaultAuth) UnmarshalJSON(data []byte) error {
+	temp := new(struct {
+		Id             uint64    `json:"Id"`
+		Salt           string    `json:"Salt"`
+		Environment    string    `json:"Environment"`
+		IsRefresh      bool      `json:"IsRefresh"`
+		Email          string    `json:"Email"`
+		PrivyWallet    string    `json:"PrivyWallet"`
+		ChangePassword bool      `json:"ChangePassword"`
+		OpenId         uuid.UUID `json:"OpenId"`
+	})
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	a.id = temp.Id
+	a.salt = temp.Salt
+	a.environment = temp.Environment
+	a.isRefresh = temp.IsRefresh
+	a.email = temp.Email
+	a.privyWallet = temp.PrivyWallet
+	a.changePassword = temp.ChangePassword
+	a.openId = temp.OpenId
+
+	return nil
+}
+func (a *DefaultAuth) MarshalJSON() ([]byte, error) {
+	temp := struct {
+		Id             uint64    `json:"Id"`
+		Salt           string    `json:"Salt"`
+		Environment    string    `json:"Environment"`
+		IsRefresh      bool      `json:"IsRefresh"`
+		Email          string    `json:"Email"`
+		PrivyWallet    string    `json:"PrivyWallet"`
+		ChangePassword bool      `json:"ChangePassword"`
+		OpenId         uuid.UUID `json:"OpenId"`
+	}{
+		Id:             a.id,
+		Salt:           a.salt,
+		Environment:    a.environment,
+		IsRefresh:      a.isRefresh,
+		Email:          a.email,
+		PrivyWallet:    a.privyWallet,
+		ChangePassword: a.changePassword,
+		OpenId:         a.openId,
+	}
+	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(temp)
+}
+func WithAuthID(id uint64) UFn {
+	return func(u *DefaultAuth) {
+		u.id = id
 	}
 }
-func WithEmail(email string) UFn {
-	return func(u *DefaultUser) {
-		u.Mail = email
+
+func WithAuthEmail(email string) UFn {
+	return func(u *DefaultAuth) {
+		u.email = email
 	}
 }
-func WithOpenId(openId string) UFn {
-	return func(u *DefaultUser) {
-		u.OpenId = openId
+func WithAuthOpenId(openId uuid.UUID) UFn {
+	return func(u *DefaultAuth) {
+		u.openId = openId
 	}
 }
-func NewUser(fns ...UFn) *DefaultUser {
-	user := &DefaultUser{}
+func WithAuthEnvironment(env string) UFn {
+	return func(u *DefaultAuth) {
+		u.environment = env
+	}
+}
+func WithAuthIsRefresh(isRefresh bool) UFn {
+	return func(u *DefaultAuth) {
+		u.isRefresh = isRefresh
+	}
+}
+func WithAuthSalt(salt string) UFn {
+	return func(u *DefaultAuth) {
+		u.salt = salt
+	}
+}
+
+func WithAuthWallet(wallet string) UFn {
+	return func(u *DefaultAuth) {
+		u.privyWallet = wallet
+	}
+}
+func WithAuthChangePassword(change bool) UFn {
+	return func(u *DefaultAuth) {
+		u.changePassword = change
+	}
+}
+func NewAuth(fns ...UFn) *DefaultAuth {
+	auth := &DefaultAuth{}
 	for _, fn := range fns {
-		fn(user)
+		fn(auth)
 	}
-	return user
+	return auth
 }
-func (u *DefaultUser) ID() uint64 {
-	return u.Id
+func (a *DefaultAuth) ID() uint64 {
+	return a.id
 }
-func (u *DefaultUser) Email() string {
-	return u.Mail
+func (a *DefaultAuth) Email() string {
+	return a.email
 }
-func (u *DefaultUser) OpenID() string {
-	return u.OpenId
+func (a *DefaultAuth) OpenID() string {
+	return a.openId.String()
+}
+func (a *DefaultAuth) Environment() string {
+	return a.environment
+}
+func (a *DefaultAuth) IsRefresh() bool {
+	return a.isRefresh
+}
+func (a *DefaultAuth) Salt() string {
+	return a.salt
+}
+func (a *DefaultAuth) PrivyWallet() string {
+	return a.privyWallet
+}
+func (a *DefaultAuth) ChangePassword() bool {
+	return a.changePassword
 }
 
 type JWT[M IClaims, E IJWT] struct {

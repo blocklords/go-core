@@ -7,10 +7,10 @@ import (
 // go test -v .
 
 func TestNewJWT(t *testing.T) {
-	user := NewUser(
-		WithUserID(333),
-		WithEmail(`liujy.willow@gmail.com`),
-		WithOpenId(`111-222-333`),
+	user := NewAuth(
+		WithAuthID(333),
+		WithAuthEmail(`a@163.com`),
+		WithAuthEnvironment(`dev`),
 	)
 
 	engine := NewEngine()
