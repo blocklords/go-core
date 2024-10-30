@@ -131,26 +131,16 @@ func (a *DefaultAuth) UnmarshalJSON(data []byte) error {
 	return nil
 }
 func (a *DefaultAuth) MarshalJSON() ([]byte, error) {
-	temp := struct {
-		Id             uint64    `json:"Id"`
-		Salt           string    `json:"Salt"`
-		Environment    string    `json:"Environment"`
-		IsRefresh      bool      `json:"IsRefresh"`
-		Email          string    `json:"Email"`
-		PrivyWallet    string    `json:"PrivyWallet"`
-		ChangePassword bool      `json:"ChangePassword"`
-		OpenId         uuid.UUID `json:"OpenId"`
-	}{
-		Id:             a.id,
-		Salt:           a.salt,
-		Environment:    a.environment,
-		IsRefresh:      a.isRefresh,
-		Email:          a.email,
-		PrivyWallet:    a.privyWallet,
-		ChangePassword: a.changePassword,
-		OpenId:         a.openId,
-	}
-	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(temp)
+	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(iris.Map{
+		`Id`:             a.id,
+		`Salt`:           a.salt,
+		`Environment`:    a.environment,
+		`IsRefresh`:      a.isRefresh,
+		`Email`:          a.email,
+		`PrivyWallet`:    a.privyWallet,
+		`ChangePassword`: a.changePassword,
+		`OpenId`:         a.openId,
+	})
 }
 func WithAuthID(id uint64) UFn {
 	return func(u *DefaultAuth) {
