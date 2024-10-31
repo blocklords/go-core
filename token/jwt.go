@@ -74,7 +74,6 @@ func WithRefreshMax(refresh time.Duration) EFn {
 		e.refreshMaxAge = refresh
 	}
 }
-
 func NewEngine(fns ...EFn) *DefaultEngine {
 	private, _ := base64.StdEncoding.DecodeString(priString)
 	privateKey, _ := jwt.ParsePrivateKeyRSA(private)
@@ -104,50 +103,11 @@ func (d *DefaultEngine) RefreshMaxAge() time.Duration {
 	return d.refreshMaxAge
 }
 
-func (a *DefaultAuth) UnmarshalJSON(data []byte) error {
-	temp := new(struct {
-		Id             uint64    `json:"Id"`
-		Salt           string    `json:"Salt"`
-		Environment    string    `json:"Environment"`
-		IsRefresh      bool      `json:"IsRefresh"`
-		Email          string    `json:"Email"`
-		PrivyWallet    string    `json:"PrivyWallet"`
-		ChangePassword bool      `json:"ChangePassword"`
-		OpenId         uuid.UUID `json:"OpenId"`
-	})
-	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-
-	a.id = temp.Id
-	a.salt = temp.Salt
-	a.environment = temp.Environment
-	a.isRefresh = temp.IsRefresh
-	a.email = temp.Email
-	a.privyWallet = temp.PrivyWallet
-	a.changePassword = temp.ChangePassword
-	a.openId = temp.OpenId
-
-	return nil
-}
-func (a *DefaultAuth) MarshalJSON() ([]byte, error) {
-	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(iris.Map{
-		`Id`:             a.id,
-		`Salt`:           a.salt,
-		`Environment`:    a.environment,
-		`IsRefresh`:      a.isRefresh,
-		`Email`:          a.email,
-		`PrivyWallet`:    a.privyWallet,
-		`ChangePassword`: a.changePassword,
-		`OpenId`:         a.openId,
-	})
-}
 func WithAuthID(id uint64) UFn {
 	return func(u *DefaultAuth) {
 		u.id = id
 	}
 }
-
 func WithAuthEmail(email string) UFn {
 	return func(u *DefaultAuth) {
 		u.email = email
@@ -173,7 +133,6 @@ func WithAuthSalt(salt string) UFn {
 		u.salt = salt
 	}
 }
-
 func WithAuthWallet(wallet string) UFn {
 	return func(u *DefaultAuth) {
 		u.privyWallet = wallet
@@ -214,6 +173,44 @@ func (a *DefaultAuth) PrivyWallet() string {
 }
 func (a *DefaultAuth) ChangePassword() bool {
 	return a.changePassword
+}
+func (a *DefaultAuth) UnmarshalJSON(data []byte) error {
+	temp := new(struct {
+		Id             uint64    `json:"Id"`
+		Salt           string    `json:"Salt"`
+		Environment    string    `json:"Environment"`
+		IsRefresh      bool      `json:"IsRefresh"`
+		Email          string    `json:"Email"`
+		PrivyWallet    string    `json:"PrivyWallet"`
+		ChangePassword bool      `json:"ChangePassword"`
+		OpenId         uuid.UUID `json:"OpenId"`
+	})
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	a.id = temp.Id
+	a.salt = temp.Salt
+	a.environment = temp.Environment
+	a.isRefresh = temp.IsRefresh
+	a.email = temp.Email
+	a.privyWallet = temp.PrivyWallet
+	a.changePassword = temp.ChangePassword
+	a.openId = temp.OpenId
+
+	return nil
+}
+func (a *DefaultAuth) MarshalJSON() ([]byte, error) {
+	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(iris.Map{
+		`Id`:             a.id,
+		`Salt`:           a.salt,
+		`Environment`:    a.environment,
+		`IsRefresh`:      a.isRefresh,
+		`Email`:          a.email,
+		`PrivyWallet`:    a.privyWallet,
+		`ChangePassword`: a.changePassword,
+		`OpenId`:         a.openId,
+	})
 }
 
 type JWT[M IClaims, E IJWT] struct {

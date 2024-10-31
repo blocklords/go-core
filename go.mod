@@ -1,8 +1,10 @@
 module github.com/blocklords/go-core
 
-go 1.22.8
+go 1.22
 
 require (
+	github.com/google/uuid v1.6.0
+	github.com/json-iterator/go v1.1.12
 	github.com/kataras/iris/v12 v12.2.11
 	github.com/shopspring/decimal v1.4.0
 )
@@ -19,11 +21,9 @@ require (
 	github.com/flosch/pongo2/v4 v4.0.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20240328165702-4d01890c35c0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/iris-contrib/schema v0.0.6 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kataras/blocks v0.0.8 // indirect
 	github.com/kataras/golog v0.1.11 // indirect
 	github.com/kataras/jwt v0.1.12 // indirect
