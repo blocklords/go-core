@@ -13,7 +13,7 @@ func TestCryptoSortKeys(t *testing.T) {
 			Num      uint64            `json:"num"`
 			Address  string            `json:"address"`
 			Students []student         `json:"students"`
-			Teachers map[string]string `json:"-"`
+			Teachers map[string]string `json:"teachers"`
 		}
 	)
 

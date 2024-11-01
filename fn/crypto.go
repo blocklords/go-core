@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -49,22 +50,35 @@ func SortData(data interface{}) interface{} {
 
 }
 
+type sortStruct struct {
+	field, tag string
+}
+
 // 对结构体字段按首字母排序
 func sortStructFields(val reflect.Value) string {
 	typ := val.Type()
 
 	// 获取并排序字段名称
-	fieldNames := make([]string, val.NumField())
+	fieldNames := make([]sortStruct, 0)
 	for i := 0; i < val.NumField(); i++ {
-		fieldNames[i] = typ.Field(i).Name
+		tag := typ.Field(i).Tag.Get("json")
+		if slices.Contains([]string{"", "-"}, tag) {
+			continue
+		}
+		fieldNames = append(fieldNames, sortStruct{
+			field: typ.Field(i).Name,
+			tag:   tag,
+		})
 	}
-	sort.Strings(fieldNames)
+	sort.Slice(fieldNames, func(i, j int) bool {
+		return fieldNames[i].tag < fieldNames[j].tag
+	})
 
 	s := make([]string, 0)
 
-	for _, name := range fieldNames {
-		field := val.FieldByName(name)
-		s = append(s, fmt.Sprintf("%s=%+v", name, SortData(field.Interface())))
+	for _, sortTag := range fieldNames {
+		field := val.FieldByName(sortTag.field)
+		s = append(s, fmt.Sprintf("%s=%+v", sortTag.tag, SortData(field.Interface())))
 	}
 	return strings.Join(s, "&")
 }
@@ -92,8 +106,12 @@ func sortSlice(val reflect.Value) string {
 
 	// 复制并递归排序 slice 内的值
 	for i := 0; i < length; i++ {
-		s = append(s, fmt.Sprintf("%d=%+v", i, SortData(val.Index(i).Interface())))
+		s = append(s, fmt.Sprintf("%d={%+v}", i, SortData(val.Index(i).Interface())))
 	}
 
-	return strings.Join(s, "&")
+	builder := strings.Builder{}
+	builder.WriteString(`[`)
+	builder.WriteString(strings.Join(s, ","))
+	builder.WriteString(`]`)
+	return builder.String()
 }
