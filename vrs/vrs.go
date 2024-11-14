@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// swagger:response VRS
+// swagger:model
 type VRS struct {
 	r common.Hash `json:"r"`
 	s common.Hash `json:"s"`
