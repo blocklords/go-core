@@ -37,14 +37,14 @@ const (
 
 type (
 	DefaultAuth struct {
-		id             uint64    `json:"Id"`
-		salt           string    `json:"Salt"`
-		environment    string    `json:"Environment"`
-		isRefresh      bool      `json:"IsRefresh"`
-		email          string    `json:"Email"`
-		privyWallet    string    `json:"PrivyWallet"`
-		changePassword bool      `json:"ChangePassword"`
-		openId         uuid.UUID `json:"OpenId"`
+		id             uint64             `json:"Id"`
+		salt           string             `json:"Salt"`
+		environment    entity.Environment `json:"Environment"`
+		isRefresh      bool               `json:"IsRefresh"`
+		email          string             `json:"Email"`
+		privyWallet    string             `json:"PrivyWallet"`
+		changePassword bool               `json:"ChangePassword"`
+		openId         uuid.UUID          `json:"OpenId"`
 	}
 	UFn           func(u *DefaultAuth)
 	DefaultEngine struct {
@@ -119,7 +119,7 @@ func WithAuthOpenId(openId uuid.UUID) UFn {
 		u.openId = openId
 	}
 }
-func WithAuthEnvironment(env string) UFn {
+func WithAuthEnvironment(env entity.Environment) UFn {
 	return func(u *DefaultAuth) {
 		u.environment = env
 	}
@@ -161,7 +161,7 @@ func (a *DefaultAuth) OpenID() string {
 	return a.openId.String()
 }
 func (a *DefaultAuth) Environment() entity.Environment {
-	return entity.Environment(a.environment)
+	return a.environment
 }
 func (a *DefaultAuth) IsRefresh() bool {
 	return a.isRefresh
@@ -177,14 +177,14 @@ func (a *DefaultAuth) ChangePassword() bool {
 }
 func (a *DefaultAuth) UnmarshalJSON(data []byte) error {
 	temp := new(struct {
-		Id             uint64    `json:"Id"`
-		Salt           string    `json:"Salt"`
-		Environment    string    `json:"Environment"`
-		IsRefresh      bool      `json:"IsRefresh"`
-		Email          string    `json:"Email"`
-		PrivyWallet    string    `json:"PrivyWallet"`
-		ChangePassword bool      `json:"ChangePassword"`
-		OpenId         uuid.UUID `json:"OpenId"`
+		Id             uint64             `json:"Id"`
+		Salt           string             `json:"Salt"`
+		Environment    entity.Environment `json:"Environment"`
+		IsRefresh      bool               `json:"IsRefresh"`
+		Email          string             `json:"Email"`
+		PrivyWallet    string             `json:"PrivyWallet"`
+		ChangePassword bool               `json:"ChangePassword"`
+		OpenId         uuid.UUID          `json:"OpenId"`
 	})
 	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &temp); err != nil {
 		return err
@@ -205,7 +205,7 @@ func (a *DefaultAuth) MarshalJSON() ([]byte, error) {
 	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(iris.Map{
 		`Id`:             a.id,
 		`Salt`:           a.salt,
-		`Environment`:    a.environment,
+		`Environment`:    a.environment.String(),
 		`IsRefresh`:      a.isRefresh,
 		`Email`:          a.email,
 		`PrivyWallet`:    a.privyWallet,
