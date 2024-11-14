@@ -3,6 +3,7 @@ package token
 import (
 	"crypto/rsa"
 	"encoding/base64"
+	"github.com/blocklords/go-core/entity"
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/kataras/iris/v12"
@@ -159,8 +160,8 @@ func (a *DefaultAuth) Email() string {
 func (a *DefaultAuth) OpenID() string {
 	return a.openId.String()
 }
-func (a *DefaultAuth) Environment() string {
-	return a.environment
+func (a *DefaultAuth) Environment() entity.Environment {
+	return entity.Environment(a.environment)
 }
 func (a *DefaultAuth) IsRefresh() bool {
 	return a.isRefresh
