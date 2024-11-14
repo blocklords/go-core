@@ -7,15 +7,16 @@ func TestNewDing2(t *testing.T) {
 		DingHook(`https://oapi.dingtalk.com/robot/send`),
 		DingToken(``),
 		DingSecret(``),
+		DingBody(DingRequest{
+			MsgType: "markdown",
+			Markdown: MarkDownModel{
+				Title: " --- test --- ",
+				Text:  "test go-core",
+			},
+		}),
 	)
 
-	notify, err := ding.Notify(DingBody{
-		MsgType: "markdown",
-		Markdown: MarkDownModel{
-			Title: " --- test --- ",
-			Text:  "test go-core",
-		},
-	})
+	notify, err := ding.Notify()
 	if err != nil {
 		t.Fatalf("err: %+v", err)
 	}

@@ -11,10 +11,20 @@ import (
 )
 
 type (
+	MarkDownModel struct {
+		Title string `json:"title,omitempty"`
+		Text  string `json:"text,omitempty"`
+	}
+	DingRequest struct {
+		MsgType  string        `json:"msgtype,omitempty"`
+		Markdown MarkDownModel `json:"markdown,omitempty"`
+	}
+
 	Ding struct {
 		hookUrl string
 		token   string
 		secret  string
+		body    DingRequest
 	}
 
 	DingFn func(d *Ding)
@@ -35,6 +45,11 @@ func DingSecret(secret string) DingFn {
 		d.secret = secret
 	}
 }
+func DingBody(body DingRequest) DingFn {
+	return func(d *Ding) {
+		d.body = body
+	}
+}
 
 func NewDing(fns ...DingFn) *Ding {
 	d := &Ding{}
@@ -44,7 +59,7 @@ func NewDing(fns ...DingFn) *Ding {
 	return d
 }
 
-func (d *Ding) Notify(body DingBody) (*resty.Response, error) {
+func (d *Ding) Notify() (*resty.Response, error) {
 	timestamp := fn.NowMs()
 
 	// sign
@@ -54,6 +69,6 @@ func (d *Ding) Notify(body DingBody) (*resty.Response, error) {
 	data := hmac256.Sum(nil)
 
 	return resty.New().R().SetHeader("Content-type", "application/json").
-		SetBody(body).
+		SetBody(d.body).
 		Post(fmt.Sprintf("%s?access_token=%s&timestamp=%d&sign=%s", d.hookUrl, d.token, timestamp, url.QueryEscape(base64.StdEncoding.EncodeToString(data))))
 }
