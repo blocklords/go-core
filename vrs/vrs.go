@@ -2,6 +2,7 @@ package vrs
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	_ "github.com/iris-contrib/swagger/v12"
 	jsoniter "github.com/json-iterator/go"
 	"strconv"
 )
