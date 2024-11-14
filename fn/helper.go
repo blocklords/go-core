@@ -1,15 +1,20 @@
-package crypto
+package fn
 
 import (
 	"encoding/hex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
+	"math/rand"
 	"strconv"
 	"time"
 )
 
 func Now() int64 {
 	return time.Now().UTC().Unix()
+}
+
+func NowMs() int64 {
+	return time.Now().UTC().UnixMilli()
 }
 
 func NowNs() int64 {
@@ -73,4 +78,14 @@ func If[T any](condition bool, trueVal, falseVal T) T {
 		return trueVal
 	}
 	return falseVal
+}
+
+func RandomCode(length int) string {
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
 }
