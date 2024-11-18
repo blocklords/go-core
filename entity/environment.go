@@ -14,3 +14,15 @@ const (
 func (e Environment) String() string {
 	return strings.ToLower(string(e))
 }
+
+func (e Environment) AuthHostPrefix() string {
+	switch e {
+	case EBeta:
+		return "beta-"
+	case EDemo:
+		return "tomato-"
+	case EPre:
+		return "pre-"
+	}
+	return ""
+}
