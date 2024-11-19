@@ -1,29 +1,55 @@
 package token
 
 import (
+	"github.com/google/uuid"
+	"gopkg.in/square/go-jose.v2/jwt"
 	"testing"
 )
 
-// go test -v .
+func TestNewEngine(t *testing.T) {
+	openId := uuid.New()
+	t.Logf("openId: %+v", openId.String())
 
-func TestNewJWT(t *testing.T) {
-	user := NewAuth(
-		WithAuthID(333),
-		WithAuthEmail(`a@163.com`),
-		WithAuthEnvironment(`dev`),
+	keys := NewKey()
+	user := NewUser(
+		WithID(333),
+		WithOpenId(openId),
+		WithEmail(`123@gmail.com`),
+		WithClaims(jwt.Claims{
+			Issuer:  "test-1",
+			Subject: "test-1",
+		}),
+	)
+	token := NewEngine(
+		WithKey(keys),
+		WithUser(
+			user,
+		),
 	)
 
-	engine := NewEngine()
-	t.Logf("engine: %+v \r\n", *engine)
-	j := NewJWT(user, engine)
-
-	access, refresh, err := j.Generate()
+	te, re, err := token.Generate()
 	if err != nil {
-		t.Fatalf("generate error: %+v", err)
+		panic(err)
 	}
 
-	t.Logf("access: %s \r\n", access)
-	t.Logf("refresh: %s \r\n", refresh)
+	t.Logf("token: %s", te)
 
-	Verify(j, access)
+	verifier, err := token.VerifierToken(te)
+	if err != nil {
+		panic(err)
+	}
+	t.Logf("verifier: %+v %+v %+v %+v %+v", verifier.ID(), verifier.OpenID(), verifier.Email(), verifier.IsRefresh(), verifier.Claims().Expiry.Time())
+
+	verifierR, err := token.VerifierRefresh(te)
+	if err != nil {
+		t.Logf("te VerifierRefresh err: %+v", err)
+	}
+
+	t.Logf("refresh: %s", re)
+	verifierR, err = token.VerifierRefresh(re)
+	if err != nil {
+		panic(err)
+	}
+	t.Logf("verifierR: %+v %+v %+v %+v %+v", verifierR.ID(), verifierR.OpenID(), verifierR.Email(), verifierR.IsRefresh(), verifierR.Claims().Expiry.Time())
+
 }
