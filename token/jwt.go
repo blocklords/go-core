@@ -10,7 +10,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
-	"log"
 	"time"
 )
 
@@ -445,7 +444,6 @@ func (e *Engine) VerifierToken(token string) (IUser, error) {
 		return nil, fmt.Errorf("验证 JWT 签名失败: %w", err)
 	}
 
-	log.Printf("%+v ---> %+v", e.User().Claims().Issuer, user.Claims().Issuer)
 	// 验证声明
 	err = user.Claims().Validate(jwt.Expected{
 		Issuer: e.User().Claims().Issuer,
