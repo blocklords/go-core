@@ -311,8 +311,8 @@ type (
 		VerifierRefresh(token string) (IUser, error)
 	}
 	Engine struct {
-		key    IKey
-		claims IUser
+		key  IKey
+		user IUser
 	}
 	EFn func(e *Engine)
 )
@@ -324,7 +324,7 @@ func WithKey(key IKey) EFn {
 }
 func WithUser(user IUser) EFn {
 	return func(e *Engine) {
-		e.claims = user
+		e.user = user
 	}
 }
 func NewEngine(fns ...EFn) *Engine {
@@ -340,9 +340,17 @@ func (e *Engine) Key() IKey {
 }
 
 func (e *Engine) User() IUser {
-	return e.claims
+	return e.user
 }
 
+func (e *Engine) WithKey(key IKey) IEngine {
+	e.key = key
+	return e
+}
+func (e *Engine) WithUser(user IUser) IEngine {
+	e.user = user
+	return e
+}
 func (e *Engine) Generate() (token, refresh string, err error) {
 	// 签名器
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: e.Key().Private()}, nil)
