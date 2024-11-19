@@ -222,6 +222,13 @@ func (a *User) WithChangePassword(cp bool) *User {
 	return a
 }
 func (a *User) WithClaims(claims jwt.Claims) *User {
+	if claims.NotBefore == nil {
+		claims.NotBefore = jwt.NewNumericDate(time.Now().UTC())
+	}
+
+	if claims.Expiry == nil {
+		claims.Expiry = jwt.NewNumericDate(time.Now().UTC().Add(accessMaxAge))
+	}
 	a.claims = claims
 	return a
 }
