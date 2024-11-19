@@ -7,7 +7,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.0
 	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
-	github.com/kataras/iris/v12 v12.2.11
+	github.com/kataras/iris/v12 v12.2.8
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/shopspring/decimal v1.4.0
 	gopkg.in/square/go-jose.v2 v2.6.0
