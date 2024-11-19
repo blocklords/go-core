@@ -309,6 +309,8 @@ type (
 		Generate() (token, refresh string, err error)
 		VerifierToken(token string) (IUser, error)
 		VerifierRefresh(token string) (IUser, error)
+		WithKey(key IKey) IEngine
+		WithUser(user IUser) IEngine
 	}
 	Engine struct {
 		key  IKey
