@@ -108,14 +108,14 @@ type (
 		Claims() jwt.Claims
 	}
 	User struct {
-		id             uint64             `json:"Id"`
-		salt           string             `json:"Salt"`
-		environment    entity.Environment `json:"Environment"`
-		isRefresh      bool               `json:"IsRefresh"`
-		email          string             `json:"Email"`
-		privyWallet    string             `json:"PrivyWallet"`
-		changePassword bool               `json:"ChangePassword"`
-		openId         uuid.UUID          `json:"OpenId"`
+		id             uint64             `json:"id"`
+		salt           string             `json:"salt"`
+		environment    entity.Environment `json:"environment"`
+		isRefresh      bool               `json:"isRefresh"`
+		email          string             `json:"email"`
+		privyWallet    string             `json:"privyWallet"`
+		changePassword bool               `json:"changePassword"`
+		openId         uuid.UUID          `json:"openId"`
 		claims         jwt.Claims         `json:"claims"`
 	}
 
@@ -299,6 +299,9 @@ type (
 	IEngine interface {
 		Key() IKey
 		User() IUser
+		Generate() (token, refresh string, err error)
+		VerifierToken(token string) (IUser, error)
+		VerifierRefresh(token string) (IUser, error)
 	}
 	Engine struct {
 		key    IKey
