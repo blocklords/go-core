@@ -289,16 +289,26 @@ func (a *User) UnmarshalJSON(data []byte) error {
 	return nil
 }
 func (a *User) MarshalJSON() ([]byte, error) {
-	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(map[string]any{
-		`id`:             a.id,
-		`salt`:           a.salt,
-		`environment`:    a.environment.String(),
-		`isRefresh`:      a.isRefresh,
-		`email`:          a.email,
-		`privyWallet`:    a.privyWallet,
-		`changePassword`: a.changePassword,
-		`openId`:         a.openId,
-		`claims`:         a.claims,
+	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(struct {
+		Id             uint64             `json:"id"`
+		Salt           string             `json:"salt"`
+		Environment    entity.Environment `json:"environment"`
+		IsRefresh      bool               `json:"isRefresh"`
+		Email          string             `json:"email"`
+		PrivyWallet    string             `json:"privyWallet"`
+		ChangePassword bool               `json:"changePassword"`
+		OpenId         uuid.UUID          `json:"openId"`
+		Claims         jwt.Claims         `json:"claims"`
+	}{
+		Id:             a.id,
+		Salt:           a.salt,
+		Environment:    a.environment,
+		IsRefresh:      a.isRefresh,
+		Email:          a.email,
+		PrivyWallet:    a.privyWallet,
+		ChangePassword: a.changePassword,
+		OpenId:         a.openId,
+		Claims:         a.claims,
 	})
 }
 
