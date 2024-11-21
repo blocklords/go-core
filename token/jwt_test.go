@@ -2,7 +2,9 @@ package token
 
 import (
 	"github.com/google/uuid"
+	"gopkg.in/square/go-jose.v2/jwt"
 	"testing"
+	"time"
 )
 
 func TestNewEngine(t *testing.T) {
@@ -26,7 +28,7 @@ func TestNewEngine(t *testing.T) {
 		WithClaims[*Key, *User, *Claims](claims),
 	)
 
-	te, re, err := token.Generate()
+	te, err := token.Generate()
 	if err != nil {
 		panic(err)
 	}
@@ -42,6 +44,13 @@ func TestNewEngine(t *testing.T) {
 	verifierR, err := token.VerifierRefresh(te)
 	if err != nil {
 		t.Logf("te VerifierRefresh err: %+v", err)
+	}
+
+	claims.WithExpiry(jwt.NewNumericDate(time.Now().UTC().Add(7 * 24 * time.Hour)))
+	user.WithIsRefresh(true)
+	re, err := token.Generate()
+	if err != nil {
+		panic(err)
 	}
 
 	t.Logf("refresh: %s", re)

@@ -404,7 +404,7 @@ type (
 		Key() K
 		User() U
 		Claims() C
-		Generate() (token, refresh string, err error)
+		Generate() (token string, err error)
 		VerifierToken(token string) (UserClaims[U, C], error)
 		VerifierRefresh(token string) (UserClaims[U, C], error)
 		WithKey(key K) IEngine[K, U, C]
@@ -498,11 +498,11 @@ func (e *Engine[K, U, C]) WithClaims(claims C) IEngine[K, U, C] {
 	e.claims = claims
 	return e
 }
-func (e *Engine[K, U, C]) Generate() (token, refresh string, err error) {
+func (e *Engine[K, U, C]) Generate() (token string, err error) {
 	// 签名器
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: e.Key().Private()}, nil)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// 签名 JWT
@@ -511,7 +511,7 @@ func (e *Engine[K, U, C]) Generate() (token, refresh string, err error) {
 		claims: e.Claims(),
 	}).CompactSerialize()
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// 加密器
@@ -520,53 +520,20 @@ func (e *Engine[K, U, C]) Generate() (token, refresh string, err error) {
 		Key:       e.Key().Public(),
 	}, nil)
 	if err != nil {
-		return "", "", fmt.Errorf("创建加密器失败: %w", err)
+		return "", fmt.Errorf("创建加密器失败: %w", err)
 	}
 
 	// 加密签名后的 JWT
 	te, err := encryptER.Encrypt([]byte(j))
 	if err != nil {
-		return "", "", fmt.Errorf("加密 JWT 失败: %w", err)
+		return "", fmt.Errorf("加密 JWT 失败: %w", err)
 	}
 	// 使用 CompactSerialize 方法序列化加密对象
 	t, err := te.CompactSerialize()
 	if err != nil {
-		return "", "", fmt.Errorf("序列化加密 JWT 失败: %w", err)
+		return "", fmt.Errorf("序列化加密 JWT 失败: %w", err)
 	}
-
-	e.User().WithIsRefresh(true)
-
-	// 签名 JWT
-	rj, err := jwt.Signed(signer).Claims(&UserClaims[U, C]{
-		user:   e.User(),
-		claims: e.Claims(),
-	}).CompactSerialize()
-	if err != nil {
-		return "", "", err
-	}
-
-	// 加密器
-	encryptER, err = jose.NewEncrypter(jose.A256GCM, jose.Recipient{
-		Algorithm: jose.RSA_OAEP_256,
-		Key:       e.Key().Public(),
-	}, nil)
-	if err != nil {
-		return "", "", fmt.Errorf("创建加密器失败: %w", err)
-	}
-
-	// 加密签名后的 JWT
-	re, err := encryptER.Encrypt([]byte(rj))
-	if err != nil {
-		return "", "", fmt.Errorf("加密 JWT 失败: %w", err)
-	}
-
-	// 使用 CompactSerialize 方法序列化加密对象
-	r, err := re.CompactSerialize()
-	if err != nil {
-		return "", "", fmt.Errorf("序列化加密 JWT 失败: %w", err)
-	}
-
-	return t, r, err
+	return t, err
 }
 func (e *Engine[K, U, C]) VerifierToken(token string) (UserClaims[U, C], error) {
 	// 解密
