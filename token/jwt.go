@@ -26,35 +26,35 @@ type (
 		Private() *rsa.PrivateKey
 		Public() *rsa.PublicKey
 	}
-	key struct {
+	Key struct {
 		private *rsa.PrivateKey
 		public  *rsa.PublicKey
 	}
 
-	KFn func(k *key)
+	KFn func(k *Key)
 )
 
 func WithPrivate(private *rsa.PrivateKey) KFn {
-	return func(k *key) {
+	return func(k *Key) {
 		k.private = private
 	}
 }
 
 func WithPublic(public *rsa.PublicKey) KFn {
-	return func(k *key) {
+	return func(k *Key) {
 		k.public = public
 	}
 }
 
-func (k *key) Private() *rsa.PrivateKey {
+func (k *Key) Private() *rsa.PrivateKey {
 	return k.private
 }
 
-func (k *key) Public() *rsa.PublicKey {
+func (k *Key) Public() *rsa.PublicKey {
 	return k.public
 }
 
-func NewKey() *key {
+func NewKey() *Key {
 	privateBlock, _ := pem.Decode([]byte(private))
 	if privateBlock == nil {
 		panic(fmt.Errorf("private key: malformed or missing PEM format (RSA)"))
@@ -93,7 +93,7 @@ func NewKey() *key {
 		panic(fmt.Errorf("public key: expected a type of *rsa.PublicKey"))
 	}
 
-	return &key{
+	return &Key{
 		private: privateKey,
 		public:  publicKey,
 	}

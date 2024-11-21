@@ -20,10 +20,10 @@ func TestNewEngine(t *testing.T) {
 		WithIssuer("test-issuer"),
 		WithSubject("test-subject"),
 	)
-	token := NewEngine[*key, *User, *Claims](
-		WithKey[*key, *User, *Claims](keys),
-		WithUser[*key, *User, *Claims](user),
-		WithClaims[*key, *User, *Claims](claims),
+	token := NewEngine[*Key, *User, *Claims](
+		WithKey[*Key, *User, *Claims](keys),
+		WithUser[*Key, *User, *Claims](user),
+		WithClaims[*Key, *User, *Claims](claims),
 	)
 
 	te, re, err := token.Generate()
