@@ -105,7 +105,7 @@ type (
 		Email() string
 		OpenID() string
 		IsRefresh() bool
-		Claims() jwt.Claims
+		WithIsRefresh(r bool) IUser
 	}
 	User struct {
 		id             uint64             `json:"id"`
@@ -116,7 +116,6 @@ type (
 		privyWallet    string             `json:"privyWallet"`
 		changePassword bool               `json:"changePassword"`
 		openId         uuid.UUID          `json:"openId"`
-		claims         jwt.Claims         `json:"claims"`
 	}
 
 	UFn func(u *User)
@@ -162,26 +161,8 @@ func WithChangePassword(change bool) UFn {
 		u.changePassword = change
 	}
 }
-func WithClaims(claims jwt.Claims) UFn {
-	if claims.NotBefore == nil {
-		claims.NotBefore = jwt.NewNumericDate(time.Now().UTC())
-	}
-
-	if claims.Expiry == nil {
-		claims.Expiry = jwt.NewNumericDate(time.Now().UTC().Add(accessMaxAge))
-	}
-	return func(u *User) {
-		u.claims = claims
-	}
-}
 func NewUser(fns ...UFn) *User {
-	auth := &User{
-		isRefresh: false,
-		claims: jwt.Claims{
-			Expiry:    jwt.NewNumericDate(time.Now().UTC().Add(accessMaxAge)),
-			NotBefore: jwt.NewNumericDate(time.Now().UTC()),
-		},
-	}
+	auth := &User{isRefresh: false}
 	for _, fn := range fns {
 		fn(auth)
 	}
@@ -205,7 +186,7 @@ func (a *User) WithEnvironment(env entity.Environment) *User {
 	a.environment = env
 	return a
 }
-func (a *User) WithIsRefresh(r bool) *User {
+func (a *User) WithIsRefresh(r bool) IUser {
 	a.isRefresh = r
 	return a
 }
@@ -219,17 +200,6 @@ func (a *User) WithPrivyWallet(wallet string) *User {
 }
 func (a *User) WithChangePassword(cp bool) *User {
 	a.changePassword = cp
-	return a
-}
-func (a *User) WithClaims(claims jwt.Claims) *User {
-	if claims.NotBefore == nil {
-		claims.NotBefore = jwt.NewNumericDate(time.Now().UTC())
-	}
-
-	if claims.Expiry == nil {
-		claims.Expiry = jwt.NewNumericDate(time.Now().UTC().Add(accessMaxAge))
-	}
-	a.claims = claims
 	return a
 }
 
@@ -257,9 +227,6 @@ func (a *User) PrivyWallet() string {
 func (a *User) ChangePassword() bool {
 	return a.changePassword
 }
-func (a *User) Claims() jwt.Claims {
-	return a.claims
-}
 
 func (a *User) UnmarshalJSON(data []byte) error {
 	temp := new(struct {
@@ -271,7 +238,6 @@ func (a *User) UnmarshalJSON(data []byte) error {
 		PrivyWallet    string             `json:"privyWallet"`
 		ChangePassword bool               `json:"changePassword"`
 		OpenId         uuid.UUID          `json:"openId"`
-		Claims         jwt.Claims         `json:"claims"`
 	})
 	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &temp); err != nil {
 		return err
@@ -285,7 +251,6 @@ func (a *User) UnmarshalJSON(data []byte) error {
 	a.privyWallet = temp.PrivyWallet
 	a.changePassword = temp.ChangePassword
 	a.openId = temp.OpenId
-	a.claims = temp.Claims
 	return nil
 }
 func (a *User) MarshalJSON() ([]byte, error) {
@@ -298,7 +263,6 @@ func (a *User) MarshalJSON() ([]byte, error) {
 		PrivyWallet    string             `json:"privyWallet"`
 		ChangePassword bool               `json:"changePassword"`
 		OpenId         uuid.UUID          `json:"openId"`
-		Claims         jwt.Claims         `json:"claims"`
 	}{
 		Id:             a.id,
 		Salt:           a.salt,
@@ -308,62 +272,236 @@ func (a *User) MarshalJSON() ([]byte, error) {
 		PrivyWallet:    a.privyWallet,
 		ChangePassword: a.changePassword,
 		OpenId:         a.openId,
-		Claims:         a.claims,
 	})
 }
 
 type (
-	IEngine interface {
-		Key() IKey
-		User() IUser
-		Generate() (token, refresh string, err error)
-		VerifierToken(token string) (IUser, error)
-		VerifierRefresh(token string) (IUser, error)
-		WithKey(key IKey) IEngine
-		WithUser(user IUser) IEngine
+	IClaims interface {
+		GetIssuer() string
+		GetID() string
+		GetSubject() string
+		GetAudience() jwt.Audience
+		GetExpiry() *jwt.NumericDate
+		GetNotBefore() *jwt.NumericDate
+		GetIssuedAt() *jwt.NumericDate
+
+		WithIssuer(issuer string) IClaims
+		WithClaimsID(Id string) IClaims
+		WithSubject(subject string) IClaims
+		WithAudience(audience jwt.Audience) IClaims
+		WithExpiry(expiry *jwt.NumericDate) IClaims
+		WithNotBefore(notBefore *jwt.NumericDate) IClaims
+		WithIssuedAt(issuedAt *jwt.NumericDate) IClaims
+		Validated(v jwt.Expected) error
 	}
-	Engine struct {
-		key  IKey
-		user IUser
+	Claims struct {
+		jwt.Claims
 	}
-	EFn func(e *Engine)
+	CFn func(claims *Claims)
 )
 
-func WithKey(key IKey) EFn {
-	return func(e *Engine) {
+func WithIssuer(issuer string) CFn {
+	return func(claims *Claims) {
+		claims.Issuer = issuer
+	}
+}
+func WithClaimsID(Id string) CFn {
+	return func(claims *Claims) {
+		claims.ID = Id
+	}
+}
+func WithSubject(subject string) CFn {
+	return func(claims *Claims) {
+		claims.Subject = subject
+	}
+}
+func WithAudience(audience jwt.Audience) CFn {
+	return func(claims *Claims) {
+		claims.Audience = audience
+	}
+}
+func WithExpiry(expiry *jwt.NumericDate) CFn {
+	return func(claims *Claims) {
+		claims.Expiry = expiry
+	}
+}
+func WithNotBefore(notBefore *jwt.NumericDate) CFn {
+	return func(claims *Claims) {
+		claims.NotBefore = notBefore
+	}
+}
+func WithIssuedAt(issuedAt *jwt.NumericDate) CFn {
+	return func(claims *Claims) {
+		claims.IssuedAt = issuedAt
+	}
+}
+
+func NewClaims(fns ...CFn) *Claims {
+	claims := &Claims{Claims: jwt.Claims{
+		Expiry:    jwt.NewNumericDate(time.Now().UTC().Add(2 * time.Hour)),
+		NotBefore: jwt.NewNumericDate(time.Now().UTC()),
+	}}
+
+	for _, fn := range fns {
+		fn(claims)
+	}
+
+	return claims
+}
+func (c *Claims) Validated(v jwt.Expected) error {
+	return c.Validate(v)
+}
+func (c *Claims) WithIssuer(issuer string) IClaims {
+	c.Issuer = issuer
+	return c
+}
+func (c *Claims) WithClaimsID(Id string) IClaims {
+	c.ID = Id
+	return c
+}
+func (c *Claims) WithSubject(subject string) IClaims {
+	c.Subject = subject
+	return c
+}
+func (c *Claims) WithAudience(audience jwt.Audience) IClaims {
+	c.Audience = audience
+	return c
+}
+func (c *Claims) WithExpiry(expiry *jwt.NumericDate) IClaims {
+	c.Expiry = expiry
+	return c
+}
+func (c *Claims) WithNotBefore(notBefore *jwt.NumericDate) IClaims {
+	c.NotBefore = notBefore
+	return c
+}
+func (c *Claims) WithIssuedAt(issuedAt *jwt.NumericDate) IClaims {
+	c.IssuedAt = issuedAt
+	return c
+}
+
+func (c *Claims) GetIssuer() string {
+	return c.Issuer
+}
+func (c *Claims) GetID() string {
+	return c.ID
+}
+func (c *Claims) GetSubject() string {
+	return c.Subject
+}
+func (c *Claims) GetAudience() jwt.Audience {
+	return c.Audience
+}
+func (c *Claims) GetExpiry() *jwt.NumericDate {
+	return c.Expiry
+}
+func (c *Claims) GetNotBefore() *jwt.NumericDate {
+	return c.NotBefore
+}
+func (c *Claims) GetIssuedAt() *jwt.NumericDate {
+	return c.IssuedAt
+}
+
+type (
+	IEngine[K IKey, U IUser, C IClaims] interface {
+		Key() K
+		User() U
+		Claims() C
+		Generate() (token, refresh string, err error)
+		VerifierToken(token string) (UserClaims[U, C], error)
+		VerifierRefresh(token string) (UserClaims[U, C], error)
+		WithKey(key K) IEngine[K, U, C]
+		WithUser(user U) IEngine[K, U, C]
+	}
+
+	Engine[K IKey, U IUser, C IClaims] struct {
+		key    K
+		user   U
+		claims C
+	}
+	EFn[K IKey, U IUser, C IClaims] func(e *Engine[K, U, C])
+
+	UserClaims[U IUser, C IClaims] struct {
+		user   U `json:"user"`
+		claims C `json:"claims"`
+	}
+)
+
+func (uc *UserClaims[U, C]) User() U {
+	return uc.user
+}
+
+func (uc *UserClaims[U, C]) Claims() C {
+	return uc.claims
+}
+
+func (uc *UserClaims[U, C]) UnmarshalJSON(data []byte) error {
+	temp := new(struct {
+		User   U `json:"user"`
+		Claims C `json:"claims"`
+	})
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	uc.user = temp.User
+	uc.claims = temp.Claims
+	return nil
+}
+func (uc *UserClaims[U, C]) MarshalJSON() ([]byte, error) {
+	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(struct {
+		User   U `json:"user"`
+		Claims C `json:"claims"`
+	}{
+		User:   uc.user,
+		Claims: uc.claims,
+	})
+}
+
+func WithKey[K IKey, U IUser, C IClaims](key K) EFn[K, U, C] {
+	return func(e *Engine[K, U, C]) {
 		e.key = key
 	}
 }
-func WithUser(user IUser) EFn {
-	return func(e *Engine) {
+func WithUser[K IKey, U IUser, C IClaims](user U) EFn[K, U, C] {
+	return func(e *Engine[K, U, C]) {
 		e.user = user
 	}
 }
-func NewEngine(fns ...EFn) *Engine {
-	engine := &Engine{}
+func WithClaims[K IKey, U IUser, C IClaims](claims C) EFn[K, U, C] {
+	return func(e *Engine[K, U, C]) {
+		e.claims = claims
+	}
+}
+func NewEngine[K IKey, U IUser, C IClaims](fns ...EFn[K, U, C]) *Engine[K, U, C] {
+	engine := &Engine[K, U, C]{}
 	for _, fn := range fns {
 		fn(engine)
 	}
 	return engine
 }
-
-func (e *Engine) Key() IKey {
+func (e *Engine[K, U, C]) Key() K {
 	return e.key
 }
-
-func (e *Engine) User() IUser {
+func (e *Engine[K, U, C]) User() U {
 	return e.user
 }
-
-func (e *Engine) WithKey(key IKey) IEngine {
+func (e *Engine[K, U, C]) Claims() C {
+	return e.claims
+}
+func (e *Engine[K, U, C]) WithKey(key K) IEngine[K, U, C] {
 	e.key = key
 	return e
 }
-func (e *Engine) WithUser(user IUser) IEngine {
+func (e *Engine[K, U, C]) WithUser(user U) IEngine[K, U, C] {
 	e.user = user
 	return e
 }
-func (e *Engine) Generate() (token, refresh string, err error) {
+func (e *Engine[K, U, C]) WithClaims(claims C) IEngine[K, U, C] {
+	e.claims = claims
+	return e
+}
+func (e *Engine[K, U, C]) Generate() (token, refresh string, err error) {
 	// 签名器
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: e.Key().Private()}, nil)
 	if err != nil {
@@ -371,7 +509,10 @@ func (e *Engine) Generate() (token, refresh string, err error) {
 	}
 
 	// 签名 JWT
-	j, err := jwt.Signed(signer).Claims(e.User()).CompactSerialize()
+	j, err := jwt.Signed(signer).Claims(&UserClaims[U, C]{
+		user:   e.User(),
+		claims: e.Claims(),
+	}).CompactSerialize()
 	if err != nil {
 		return "", "", err
 	}
@@ -396,14 +537,17 @@ func (e *Engine) Generate() (token, refresh string, err error) {
 		return "", "", fmt.Errorf("序列化加密 JWT 失败: %w", err)
 	}
 
-	claims := e.User().Claims()
-	claims.Expiry = jwt.NewNumericDate(time.Now().UTC().Add(refreshMaxAge))
+	claims := e.Claims()
+	claims.WithExpiry(jwt.NewNumericDate(time.Now().UTC().Add(refreshMaxAge)))
 
-	e.User().(*User).WithClaims(claims)
-	e.User().(*User).WithIsRefresh(true)
+	e.WithClaims(claims)
+	e.User().WithIsRefresh(true)
 
 	// 签名 JWT
-	rj, err := jwt.Signed(signer).Claims(e.User()).CompactSerialize()
+	rj, err := jwt.Signed(signer).Claims(&UserClaims[U, C]{
+		user:   e.User(),
+		claims: e.Claims(),
+	}).CompactSerialize()
 	if err != nil {
 		return "", "", err
 	}
@@ -431,75 +575,75 @@ func (e *Engine) Generate() (token, refresh string, err error) {
 
 	return t, r, err
 }
-func (e *Engine) VerifierToken(token string) (IUser, error) {
+func (e *Engine[K, U, C]) VerifierToken(token string) (UserClaims[U, C], error) {
 	// 解密
 	object, err := jose.ParseEncrypted(token)
 	if err != nil {
-		return nil, fmt.Errorf("解析加密 JWT 失败: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("解析加密 JWT 失败: %w", err)
 	}
 
 	decryptedJWT, err := object.Decrypt(e.Key().Private())
 	if err != nil {
-		return nil, fmt.Errorf("解密 JWT 失败: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("解密 JWT 失败: %w", err)
 	}
 
 	// 验证签名
 	parsedJWT, err := jwt.ParseSigned(string(decryptedJWT))
 	if err != nil {
-		return nil, fmt.Errorf("解析签名 JWT 失败: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("解析签名 JWT 失败: %w", err)
 	}
 
-	user := &User{}
-	if err := parsedJWT.Claims(e.Key().Public(), user); err != nil {
-		return nil, fmt.Errorf("验证 JWT 签名失败: %w", err)
+	var parse UserClaims[U, C]
+	if err = parsedJWT.Claims(e.Key().Public(), &parse); err != nil {
+		return UserClaims[U, C]{}, fmt.Errorf("验证 JWT 签名失败: %w", err)
 	}
 
 	// 验证声明
-	err = user.Claims().Validate(jwt.Expected{
-		Issuer: e.User().Claims().Issuer,
+	err = parse.Claims().Validated(jwt.Expected{
+		Issuer: e.Claims().GetIssuer(),
 		Time:   time.Now().UTC(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("JWT 声明无效: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("JWT 声明无效: %w", err)
 	}
 
-	return user, nil
+	return parse, nil
 }
-func (e *Engine) VerifierRefresh(token string) (IUser, error) {
+func (e *Engine[K, U, C]) VerifierRefresh(token string) (UserClaims[U, C], error) {
 	// 解密
 	object, err := jose.ParseEncrypted(token)
 	if err != nil {
-		return nil, fmt.Errorf("解析加密 JWT 失败: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("解析加密 JWT 失败: %w", err)
 	}
 
 	decryptedJWT, err := object.Decrypt(e.Key().Private())
 	if err != nil {
-		return nil, fmt.Errorf("解密 JWT 失败: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("解密 JWT 失败: %w", err)
 	}
 
 	// 验证签名
 	parsedJWT, err := jwt.ParseSigned(string(decryptedJWT))
 	if err != nil {
-		return nil, fmt.Errorf("解析签名 JWT 失败: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("解析签名 JWT 失败: %w", err)
 	}
 
-	user := &User{}
-	if err := parsedJWT.Claims(e.Key().Public(), user); err != nil {
-		return nil, fmt.Errorf("验证 JWT 签名失败: %w", err)
+	var parse UserClaims[U, C]
+	if err := parsedJWT.Claims(e.Key().Public(), &parse); err != nil {
+		return UserClaims[U, C]{}, fmt.Errorf("验证 JWT 签名失败: %w", err)
 	}
 
-	if !user.IsRefresh() {
-		return nil, fmt.Errorf("验证 JWT 签名失败: 不是刷新类型的 token")
+	if !parse.User().IsRefresh() {
+		return UserClaims[U, C]{}, fmt.Errorf("验证 JWT 签名失败: 不是刷新类型的 token")
 	}
 
 	// 验证声明
-	err = user.Claims().Validate(jwt.Expected{
-		Issuer: e.User().Claims().Issuer,
+	err = parse.Claims().Validated(jwt.Expected{
+		Issuer: e.Claims().GetIssuer(),
 		Time:   time.Now().UTC(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("JWT 声明无效: %w", err)
+		return UserClaims[U, C]{}, fmt.Errorf("JWT 声明无效: %w", err)
 	}
 
-	return user, nil
+	return parse, nil
 }
