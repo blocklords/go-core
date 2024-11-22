@@ -16,19 +16,19 @@ type (
 	}
 	EFn[K IKey, U IUser, C IClaims] func(e *Engine[K, U, C])
 
-	UserClaims[U IUser, C IClaims] struct {
+	userAndClaims[U IUser, C IClaims] struct {
 		user   U `json:"user"`
 		claims C `json:"claims"`
 	}
 )
 
-func (uc *UserClaims[U, C]) User() U {
+func (uc *userAndClaims[U, C]) User() U {
 	return uc.user
 }
-func (uc *UserClaims[U, C]) Claims() C {
+func (uc *userAndClaims[U, C]) Claims() C {
 	return uc.claims
 }
-func (uc *UserClaims[U, C]) UnmarshalJSON(data []byte) error {
+func (uc *userAndClaims[U, C]) UnmarshalJSON(data []byte) error {
 	temp := new(struct {
 		User   U `json:"user"`
 		Claims C `json:"claims"`
@@ -41,7 +41,7 @@ func (uc *UserClaims[U, C]) UnmarshalJSON(data []byte) error {
 	uc.claims = temp.Claims
 	return nil
 }
-func (uc *UserClaims[U, C]) MarshalJSON() ([]byte, error) {
+func (uc *userAndClaims[U, C]) MarshalJSON() ([]byte, error) {
 	return jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(struct {
 		User   U `json:"user"`
 		Claims C `json:"claims"`
@@ -117,7 +117,7 @@ func (e *Engine[K, U, C]) Generate() (token string, err error) {
 	}
 
 	// 签名 JWT
-	j, err := jwt.Signed(signer).Claims(&UserClaims[U, C]{
+	j, err := jwt.Signed(signer).Claims(&userAndClaims[U, C]{
 		user:   e.User(),
 		claims: e.Claims(),
 	}).CompactSerialize()
@@ -164,7 +164,7 @@ func (e *Engine[K, U, C]) VerifierToken(token string) (*U, *C, error) {
 		return nil, nil, fmt.Errorf("解析签名 JWT 失败: %w", err)
 	}
 
-	parse := &UserClaims[U, C]{}
+	parse := &userAndClaims[U, C]{}
 	if err = parsedJWT.Claims(e.Key().Public(), parse); err != nil {
 		return nil, nil, fmt.Errorf("验证 JWT 签名失败: %w", err)
 	}
@@ -198,7 +198,7 @@ func (e *Engine[K, U, C]) VerifierRefresh(token string) (*U, *C, error) {
 		return nil, nil, fmt.Errorf("解析签名 JWT 失败: %w", err)
 	}
 
-	parse := &UserClaims[U, C]{}
+	parse := &userAndClaims[U, C]{}
 	if err = parsedJWT.Claims(e.Key().Public(), parse); err != nil {
 		return nil, nil, fmt.Errorf("验证 JWT 签名失败: %w", err)
 	}
