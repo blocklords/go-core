@@ -35,13 +35,15 @@ func TestNewEngine(t *testing.T) {
 
 	t.Logf("token: %s", te)
 
-	verifier, err := token.VerifierToken(te)
+	u, c, err := token.VerifierToken(te)
 	if err != nil {
 		panic(err)
 	}
-	t.Logf("verifier: %+v %+v %+v %+v %+v", verifier.User().ID(), verifier.User().OpenID(), verifier.User().Email(), verifier.User().IsRefresh(), verifier.Claims().GetExpiry().Time())
 
-	verifierR, err := token.VerifierRefresh(te)
+	us, cl := *u, *c
+	t.Logf("verifier: %+v %+v %+v %+v %+v", us.ID(), us.OpenID(), us.Email(), us.IsRefresh(), cl.GetExpiry().Time())
+
+	ru, rc, err := token.VerifierRefresh(te)
 	if err != nil {
 		t.Logf("te VerifierRefresh err: %+v", err)
 	}
@@ -54,10 +56,12 @@ func TestNewEngine(t *testing.T) {
 	}
 
 	t.Logf("refresh: %s", re)
-	verifierR, err = token.VerifierRefresh(re)
+	ru, rc, err = token.VerifierRefresh(re)
 	if err != nil {
 		panic(err)
 	}
-	t.Logf("verifierR: %+v %+v %+v %+v %+v", verifierR.User().ID(), verifierR.User().OpenID(), verifierR.User().Email(), verifierR.User().IsRefresh(), verifierR.Claims().GetExpiry().Time())
+
+	rus, rcl := *ru, *rc
+	t.Logf("verifierR: %+v %+v %+v %+v %+v", rus.ID(), rus.OpenID(), rus.Email(), rus.IsRefresh(), rcl.GetExpiry().Time())
 
 }
