@@ -51,7 +51,7 @@ func WithIssuedAt(issuedAt *jwt.NumericDate) CFn {
 
 func NewClaims(fns ...CFn) *Claims {
 	claims := &Claims{Claims: jwt.Claims{
-		Expiry:    jwt.NewNumericDate(time.Now().UTC().Add(2 * time.Hour)),
+		Expiry:    jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
 		NotBefore: jwt.NewNumericDate(time.Now().UTC()),
 	}}
 
