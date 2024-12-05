@@ -15,12 +15,14 @@ type (
 	IFloat interface {
 		~float32 | ~float64
 	}
-
+	IBool interface {
+		bool
+	}
 	IntX[I IInt]     struct{}
 	UintX[I IUint]   struct{}
 	FloatX[I IFloat] struct{}
-
-	Model interface {
+	BoolX[I IBool]   struct{}
+	Model            interface {
 		IInt | IUint | IFloat
 	}
 
@@ -61,6 +63,17 @@ func (r *FloatX[I]) Rand(min, max I) I {
 		min, max = max, min
 	}
 	return I(rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)).Float64()*(float64(max)-float64(min)) + float64(min))
+}
+
+func (r *BoolX[I]) Rand(min, max I) I {
+	source := []bool{true, false}
+	destination := make([]bool, len(source))
+	copy(destination, source)
+	rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
+	rand.Shuffle(len(destination), func(i, j int) {
+		destination[i], destination[j] = destination[j], destination[i]
+	})
+	return I(destination[0])
 }
 
 func RandWithEngine[M Model, I IRand[M]](en I) Fn[M, I] {
