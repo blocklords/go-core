@@ -11,6 +11,10 @@ type (
 	}
 )
 
+func NewWeight[T IWeight](items []T) *Weights[T] {
+	return &Weights[T]{items: items}
+}
+
 // Rand 加权随机
 func (w Weights[T]) Rand() T {
 	totalWeight := int64(0)
