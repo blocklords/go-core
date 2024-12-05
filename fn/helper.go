@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
+	"math"
 	"math/rand"
 	"time"
 )
@@ -43,4 +44,12 @@ func RandomCode(length int) string {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+func RoundDownToTwoDecimalPlaces(f float64, digits int) float64 {
+	if digits < 1 {
+		return 0
+	}
+	dunit := math.Pow(10, float64(digits))
+	return math.Floor(f*dunit) / dunit
 }
