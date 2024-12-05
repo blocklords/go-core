@@ -46,10 +46,10 @@ func RandomCode(length int) string {
 	return string(b)
 }
 
-func RoundDownToTwoDecimalPlaces(f float64, digits int) float64 {
-	if digits < 1 {
-		return 0
+func RoundDownToTwoDecimalPlaces(f float64, digits ...int) float64 {
+	if len(digits) < 1 {
+		digits = append(digits, 2)
 	}
-	dunit := math.Pow(10, float64(digits))
+	dunit := math.Pow(10, float64(digits[0]))
 	return math.Floor(f*dunit) / dunit
 }
