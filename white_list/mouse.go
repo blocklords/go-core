@@ -47,3 +47,13 @@ func GetRandMouseId() uint64 {
 
 	return destination[0]
 }
+
+func GetRandLength(length int) []uint64 {
+	destination := make([]uint64, len(dynastyIds))
+	copy(destination, dynastyIds)
+	rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
+	rand.Shuffle(len(destination), func(i, j int) {
+		destination[i], destination[j] = destination[j], destination[i]
+	})
+	return destination[:length]
+}
