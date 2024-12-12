@@ -31,8 +31,12 @@ func Base64DecodeNoPadding(data string) ([]byte, error) {
 	return base64.StdEncoding.WithPadding(base64.NoPadding).DecodeString(data)
 }
 
+func CryptAny(obj []byte) string {
+	return Md5(obj)
+}
+
 // SortData 对数据递归排序
-func SortData(data interface{}) interface{} {
+func SortData(data interface{}) string {
 	val := reflect.ValueOf(data)
 	switch val.Kind() {
 	case reflect.Pointer:
@@ -47,7 +51,6 @@ func SortData(data interface{}) interface{} {
 
 		return fmt.Sprintf("%+v", data)
 	}
-
 }
 
 type sortStruct struct {
