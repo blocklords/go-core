@@ -57,3 +57,7 @@ func GetRandLength(length int) []uint64 {
 	})
 	return destination[:length]
 }
+
+func All() []uint64 {
+	return dynastyIds
+}
