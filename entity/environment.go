@@ -8,6 +8,8 @@ const (
 	EDemo Environment = `demo`
 	EBeta Environment = `beta`
 	EPre  Environment = `pre`
+	ESteam Environment = `steam`
+	ESteamMain Environment = `steam-main`
 	EMain Environment = `main`
 )
 
@@ -23,6 +25,10 @@ func (e Environment) AuthHostPrefix() string {
 		return "tomato-"
 	case EPre:
 		return "pre-"
+	case ESteam:
+		return "steam-"
+	case ESteamMain:
+		return "steam-main-"
 	}
 	return ""
 }
