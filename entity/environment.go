@@ -5,12 +5,12 @@ import "strings"
 type Environment string
 
 const (
-	EDemo Environment = `demo`
-	EBeta Environment = `beta`
-	EPre  Environment = `pre`
-	ESteam Environment = `steam`
+	EDemo      Environment = `demo`
+	EBeta      Environment = `beta`
+	EPre       Environment = `pre`
+	ESteam     Environment = `steam`
 	ESteamMain Environment = `steam-main`
-	EMain Environment = `main`
+	EMain      Environment = `main`
 )
 
 func (e Environment) String() string {
@@ -31,4 +31,8 @@ func (e Environment) AuthHostPrefix() string {
 		return "steam-main-"
 	}
 	return ""
+}
+
+func (e Environment) IsMain() bool {
+	return e.String() == EMain.String() || e.String() == ESteamMain.String()
 }
