@@ -2,24 +2,12 @@ package rand_any
 
 import (
 	"crypto/aes"
+	"crypto/cipher"
+	crand "crypto/rand"
 	"encoding/binary"
-	"fmt"
+	"math"
 	"sync/atomic"
 	"time"
-)
-
-type (
-	RandCode struct {
-		charset []rune
-		base    uint64
-		secret  []byte
-
-		machineID uint64
-
-		state uint64 // 原子状态：时间+序列
-	}
-
-	RandFn func(e *RandCode)
 )
 
 const (
@@ -34,50 +22,122 @@ const (
 	epoch = uint64(1704067200000)
 )
 
-//
-// ========== Option ==========
-//
+type (
+	IFormat interface {
+		Format(string) string
+	}
+	FormatString struct {
+		group int    // 分割位数
+		sep   string // 分割字符
+	}
 
+	FormatFn func(f *FormatString)
+	RandCode struct {
+		charset   []byte
+		base      uint64
+		machineID uint64
+		secret    [16]byte
+		state     uint64
+		block     cipher.Block
+
+		length   int
+		formatFn IFormat
+	}
+	RandFn func(e *RandCode)
+)
+
+// ================= Option =================
+
+func FormatStringGroup(group int) FormatFn {
+	return func(f *FormatString) {
+		f.group = group
+	}
+}
+func FormatStringSep(sep string) FormatFn {
+	return func(f *FormatString) {
+		f.sep = sep
+	}
+}
+
+func NewFormatString(fns ...FormatFn) *FormatString {
+	format := &FormatString{group: 4, sep: "-"}
+	for _, fn := range fns {
+		fn(format)
+	}
+	return format
+}
+
+func (f *FormatString) Format(s string) string {
+	if f.group <= 0 {
+		return s
+	}
+	n := len(s)
+	out := make([]byte, 0, n+n/f.group)
+	for i := 0; i < n; i++ {
+		if i > 0 && i%f.group == 0 {
+			out = append(out, f.sep...)
+		}
+		out = append(out, s[i])
+	}
+
+	return string(out)
+}
 func RandCodeMachineID(machineID uint64) RandFn {
 	return func(e *RandCode) {
 		e.machineID = machineID
 	}
 }
 
-func RandCodeSecret(secret []byte) RandFn {
+func RandCodeSecret(secret [16]byte) RandFn {
 	return func(e *RandCode) {
 		e.secret = secret
 	}
 }
 
-//
-// ========== Constructor ==========
-//
+func RandCodeLength(length int) RandFn {
+	return func(e *RandCode) {
+		e.length = length
+	}
+}
+
+func RandCodeFormat(fn IFormat) RandFn {
+	return func(e *RandCode) {
+		e.formatFn = fn
+	}
+}
+
+// ================= Constructor =================
 
 func NewRandCode(fns ...RandFn) *RandCode {
-	charset := []rune("ABCDEFGHJKMNPQRSTUVWXYZ23456789")
+	charset := []byte("ABCDEFGHJKMNPQRSTUVWXYZ23456789")
 
-	engine := &RandCode{
+	rc := &RandCode{
 		charset:   charset,
 		base:      uint64(len(charset)),
-		secret:    []byte("liu-willow-16key"), // 必须16字节
 		machineID: 1,
+		secret:    [16]byte{'l', 'i', 'u', '-', 'w', 'i', 'l', 'l', 'o', 'w', '-', '1', '6', 'k', 'e', 'y'},
+		length:    12,
+		formatFn:  NewFormatString(),
 	}
 
 	for _, fn := range fns {
-		fn(engine)
+		fn(rc)
 	}
 
-	if len(engine.secret) != 16 {
-		panic("secret must be 16 bytes")
+	block, err := aes.NewCipher(rc.secret[:])
+	if err != nil {
+		panic(err)
+	}
+	rc.block = block
+
+	if rc.length < 6 {
+		panic("length must >= 6")
 	}
 
-	return engine
+	return rc
 }
 
-//
-// ========== 无锁 Snowflake ==========
-//
+// ================= Snowflake =================
 
 func (rc *RandCode) nextID() uint64 {
 	for {
@@ -86,76 +146,115 @@ func (rc *RandCode) nextID() uint64 {
 		lastTime := old >> sequenceBits
 		sequence := old & maxSequence
 
-		now := uint64(time.Now().UnixMilli() - int64(epoch))
+		now := uint64(time.Now().UnixMilli()) - epoch
 
-		var newTime uint64
+		if now < lastTime {
+			now = lastTime
+		}
+
 		var newSeq uint64
-
 		if now == lastTime {
 			newSeq = (sequence + 1) & maxSequence
 			if newSeq == 0 {
 				continue
 			}
-			newTime = now
-		} else if now > lastTime {
-			newTime = now
-			newSeq = 0
 		} else {
-			continue
+			newSeq = 0
 		}
 
-		newState := (newTime << sequenceBits) | newSeq
+		newState := (now << sequenceBits) | newSeq
 
 		if atomic.CompareAndSwapUint64(&rc.state, old, newState) {
-			id := (newTime << timestampShift) |
+			return (now << timestampShift) |
 				(rc.machineID << workerShift) |
 				newSeq
-
-			return id
 		}
 	}
 }
 
-//
-// ========== AES 加密 ==========
-//
+// ================= crypto random =================
 
-func (rc *RandCode) encrypt(id uint64) uint64 {
-	block, _ := aes.NewCipher(rc.secret)
-
-	buf := make([]byte, 16)
-	binary.LittleEndian.PutUint64(buf, id)
-
-	block.Encrypt(buf, buf)
-
-	return binary.LittleEndian.Uint64(buf)
+func randUint32() uint32 {
+	var b [4]byte
+	_, _ = crand.Read(b[:])
+	return binary.LittleEndian.Uint32(b[:])
 }
 
-//
-// ========== Base32 编码 ==========
-//
+// ================= AES 混淆 =================
 
-func (rc *RandCode) encode(num uint64) string {
-	buf := make([]rune, 12)
+func (rc *RandCode) encrypt(id uint64) uint64 {
+	salt := uint64(randUint32())
 
-	for i := 11; i >= 0; i-- {
+	id ^= salt << 32
+
+	var buf [16]byte
+	binary.LittleEndian.PutUint64(buf[:], id)
+
+	rc.block.Encrypt(buf[:], buf[:])
+
+	return binary.LittleEndian.Uint64(buf[:])
+}
+
+// ================= 编码 =================
+
+func (rc *RandCode) encodeFixed(num uint64, length int) string {
+	buf := make([]byte, length)
+
+	for i := length - 1; i >= 0; i-- {
 		buf[i] = rc.charset[num%rc.base]
 		num /= rc.base
 	}
 
-	return fmt.Sprintf("%s-%s-%s",
-		string(buf[0:4]),
-		string(buf[4:8]),
-		string(buf[8:12]),
-	)
+	return string(buf)
 }
 
-//
-// ========== 对外接口 ==========
-//
+// 计算需要多少位可以容纳 bits
+func calcCoreLen(bits int, base uint64) int {
+	return int(math.Ceil(float64(bits) / math.Log2(float64(base))))
+}
+
+// ================= 外部接口 =================
 
 func (rc *RandCode) Make() string {
+
 	id := rc.nextID()
+
+	// ===== 根据长度决定使用多少bit =====
+	bits := 60
+	if rc.length > 12 {
+		bits = 64 // ✅ 压缩到 60bit，安全适配12位
+	}
+
+	if bits < 64 {
+		id &= (1 << bits) - 1
+	}
+
 	encrypted := rc.encrypt(id)
-	return rc.encode(encrypted)
+
+	// 核心编码长度
+	coreLen := calcCoreLen(bits, rc.base)
+
+	encode := rc.encodeFixed(encrypted, coreLen)
+
+	code := encode[:rc.length]
+
+	if rc.length > coreLen {
+		prefixLen := rc.length - coreLen
+		buf := make([]byte, rc.length)
+
+		// 随机前缀
+		for i := 0; i < prefixLen; i++ {
+			buf[i] = rc.charset[randUint32()%uint32(len(rc.charset))]
+		}
+
+		copy(buf[prefixLen:], encode)
+
+		code = string(buf)
+	}
+
+	if rc.formatFn != nil {
+		return rc.formatFn.Format(code)
+	}
+
+	return code
 }
