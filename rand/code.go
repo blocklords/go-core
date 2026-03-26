@@ -252,9 +252,5 @@ func (rc *RandCode) Make() string {
 		code = string(buf)
 	}
 
-	if rc.formatFn != nil {
-		return rc.formatFn.Format(code)
-	}
-
-	return code
+	return rc.formatFn.Format(code)
 }
