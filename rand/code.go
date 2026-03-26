@@ -236,9 +236,11 @@ func (rc *RandCode) Make() string {
 
 	encode := rc.encodeFixed(encrypted, coreLen)
 
-	code := encode[:rc.length]
+	var code string
 
-	if rc.length > coreLen {
+	if rc.length <= coreLen {
+		code = encode[:rc.length]
+	} else {
 		prefixLen := rc.length - coreLen
 		buf := make([]byte, rc.length)
 
@@ -252,5 +254,9 @@ func (rc *RandCode) Make() string {
 		code = string(buf)
 	}
 
-	return rc.formatFn.Format(code)
+	if rc.formatFn != nil {
+		return rc.formatFn.Format(code)
+	}
+
+	return code
 }
