@@ -30,6 +30,7 @@ type (
 		group int    // 分割位数
 		sep   string // 分割字符
 	}
+	FormatNone struct{}
 
 	FormatFn func(f *FormatString)
 	RandCode struct {
@@ -82,6 +83,15 @@ func (f *FormatString) Format(s string) string {
 
 	return string(out)
 }
+
+func NewFormatNone() *FormatNone {
+	return &FormatNone{}
+}
+
+func (f *FormatNone) Format(s string) string {
+	return s
+}
+
 func RandCodeMachineID(machineID uint64) RandFn {
 	return func(e *RandCode) {
 		e.machineID = machineID
@@ -117,7 +127,7 @@ func NewRandCode(fns ...RandFn) *RandCode {
 		machineID: 1,
 		secret:    [16]byte{'l', 'i', 'u', '-', 'w', 'i', 'l', 'l', 'o', 'w', '-', '1', '6', 'k', 'e', 'y'},
 		length:    12,
-		formatFn:  NewFormatString(),
+		formatFn:  NewFormatNone(),
 	}
 
 	for _, fn := range fns {
